@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prancheta Tática de Vôlei - Animações e Posicionamento</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+
+        .volleyball-court {
+            background-color: #f39c12; /* Cor da quadra estilo madeira/laranja */
+            border: 4px solid #ffffff;
+            position: relative;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4);
+            aspect-ratio: 9 / 12;
+            max-width: 480px;
+            margin: 0 auto;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .court-out-of-bounds {
+            background-color: #1e3a8a; /* Azul fora de quadra */
+            padding: 16px;
+            border-radius: 12px;
+        }
+        .net-line {
+            height: 6px;
+            background: linear-gradient(90deg, #e2e8f0 0%, #ffffff 50%, #e2e8f0 100%);
+            border-top: 2px solid #000;
+            border-bottom: 2px solid #000;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.4);
+        }
+        .three-meter-line {
+            border-bottom: 3px dashed rgba(255, 255, 255, 0.9);
+        }
+        .player-token {
+            transition: all 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+            transform: translate(-50%, -50%);
+            touch-action: none;
+            position: absolute;
+            z-index: 10;
+        }
+        .pulse-ring {
+            box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+            }
+            70% {
+                box-shadow: 0 0 0 12px rgba(239, 68, 68, 0);
+            }
+            100% {
+                box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+            }
+        }
+        .movement-line {
+            stroke-dasharray: 6, 6;
+            animation: dash 1.5s linear infinite;
+        }
+        @keyframes dash {
+            to {
+                stroke-dashoffset: -24;
+            }
+        }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col">
+
+    <header class="bg-slate-800 border-b border-slate-700 py-3 px-4 sticky top-0 z-30 shadow-md">
+        <div class="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-3">
+            <div class="flex items-center gap-3">
+                <div class="bg-indigo-600 p-2 rounded-lg">
+                    <i data-lucide="volleyball" class="w-6 h-6 text-white"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold tracking-tight text-white flex items-center gap-2">
+                        Prancheta Tática Animada
+                        <span class="text-xs font-normal bg-indigo-500/20 text-indigo-300 px-2 py-0.5 rounded-full border border-indigo-500/30">Campeonato Municipal</span>
+                    </h1>
+                    <p class="text-xs text-slate-400">Entenda rodízios, posições e deslocamentos em tempo real</p>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-2 bg-slate-900 p-1.5 rounded-xl border border-slate-700 w-full sm:w-auto">
+                <label for="systemSelect" class="text-xs font-semibold text-slate-400 pl-2 whitespace-nowrap">Sistema:</label>
+                <select id="systemSelect" onchange="changeSystem(this.value)" class="bg-slate-800 text-white font-medium text-sm rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 w-full">
+                    <option value="6x0">6x0 (Iniciação / Sem Posição Fixa)</option>
+                    <option value="4x2">4x2 Simples (Levantador da Frente)</option>
+                    <option value="5x1" selected>5x1 (Profissional / Com Infiltração)</option>
+                </select>
+            </div>
+        </div>
+    </header>
+    <main class="flex-1 max-w-7xl w-full mx-auto p-3 sm:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+        <section class="lg:col-span-7 flex flex-col gap-4">
+
+            <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 flex flex-col gap-3 shadow-lg">
+
+                <div class="flex flex-col sm:flex-row items-center justify-between gap-3">
+                    <div class="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-start">
+                        <button onclick="prevRotation()" class="p-2.5 bg-slate-700 hover:bg-slate-600 rounded-lg text-slate-200 transition active:scale-95 flex items-center gap-1 font-semibold text-sm">
+                            <i data-lucide="chevron-left" class="w-5 h-5"></i>
+                            <span class="hidden sm:inline">Anterior</span>
+                        </button>
+
+                        <div class="text-center">
+                            <span class="text-xs font-bold uppercase tracking-wider text-indigo-400 block">Rodízio do Saque</span>
+                            <div id="rotationDisplay" class="text-lg font-extrabold text-white">
+                                P1 - Levantador no Saque
+                            </div>
+                        </div>
+
+                        <button onclick="nextRotation()" class="p-2.5 bg-indigo-600 hover:bg-indigo-500 rounded-lg text-white transition active:scale-95 flex items-center gap-1 font-semibold text-sm shadow-md shadow-indigo-600/30">
+                            <span class="hidden sm:inline">Próxima</span>
+                            <i data-lucide="chevron-right" class="w-5 h-5"></i>
+                        </button>
+                    </div>
+                    <button id="btnAnimate" onclick="toggleAnimationState()" class="w-full sm:w-auto px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition shadow-lg bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white border border-emerald-400/40">
+                        <i data-lucide="play-circle" class="w-5 h-5 text-emerald-200 animate-pulse"></i>
+                        <span id="animateBtnText">▶ Animar Troca Tática</span>
+                    </button>
+                </div>
+
+                <div class="grid grid-cols-2 gap-2 pt-2 border-t border-slate-700">
+                    <button id="btnBallUs" onclick="setBallPossession('us')" class="p-2.5 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition bg-indigo-600 text-white shadow">
+                        <i data-lucide="zap" class="w-4 h-4"></i>
+                        <span>Bola com a Gente (Recepção/Ataque)</span>
+                    </button>
+                    <button id="btnBallEnemy" onclick="setBallPossession('enemy')" class="p-2.5 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition bg-slate-900 text-slate-400 hover:text-white border border-slate-700">
+                        <i data-lucide="shield" class="w-4 h-4"></i>
+                        <span>Bola com o Adversário (Bloqueio/Defesa)</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="court-out-of-bounds relative flex justify-center items-center shadow-2xl">
+                <div class="w-full max-w-[480px]">
+                    <div class="flex justify-between items-center text-xs text-slate-300 font-bold mb-1 px-2">
+                        <span class="flex items-center gap-1 text-red-400"><i data-lucide="arrow-up" class="w-3 h-3"></i> REDE ADVERSÁRIA</span>
+                        <span id="statusAnimationLabel" class="text-emerald-300 bg-emerald-950/80 px-2.5 py-0.5 rounded-full border border-emerald-500/40 text-[11px] font-semibold">📍 Posição Estática de Saque</span>
+                    </div>
+
+                    <div class="net-line w-full mb-1 relative">
+                        <div class="absolute left-1/2 -translate-x-1/2 -top-2 bg-slate-900 text-slate-200 text-[10px] font-extrabold px-3 py-0.5 rounded-full border border-slate-600 uppercase tracking-widest shadow">
+                            REDE
+                        </div>
+                    </div>
+
+                    <div id="courtContainer" class="volleyball-court relative">
+
+                        <div class="three-meter-line absolute w-full top-[33.33%] left-0 pointer-events-none flex justify-between items-center px-1">
+                            <span class="text-[10px] font-bold text-white/40 tracking-widest uppercase">Linha dos 3m</span>
+                            <span class="text-[10px] font-bold text-white/40 tracking-widest uppercase">Zona de Ataque</span>
+                        </div>
+                        <svg id="animationSvg" class="absolute inset-0 w-full h-full pointer-events-none z-0">
+                        </svg>
+                        <div id="playersLayer" class="absolute inset-0 z-10"></div>
+                    </div>
+
+                    <div class="text-center mt-2 text-xs text-slate-400 flex items-center justify-center gap-2">
+                        <i data-lucide="info" class="w-3.5 h-3.5 text-indigo-400"></i>
+                        <span>Dica: Clique no botão verde para ver o time correndo para a formação tática!</span>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-indigo-950/40 border border-indigo-800/50 p-4 rounded-xl flex items-start gap-3">
+                <div class="bg-indigo-600/30 p-2 rounded-lg text-indigo-400 shrink-0 mt-0.5">
+                    <i data-lucide="compass" class="w-5 h-5"></i>
+                </div>
+                <div>
+                    <h3 class="text-sm font-bold text-indigo-200" id="tacticalTitle">Orientação da Rotação</h3>
+                    <p class="text-xs text-slate-300 leading-relaxed mt-1" id="tacticalDescription">
+                        Carregando informações da rotação...
+                    </p>
+                </div>
+            </div>
+
+        </section>
+
+        <section class="lg:col-span-5 flex flex-col gap-4">
+
+            <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 shadow-lg">
+                <div class="flex items-center justify-between mb-4 border-b border-slate-700 pb-3">
+                    <div class="flex items-center gap-2">
+                        <i data-lucide="users" class="w-5 h-5 text-indigo-400"></i>
+                        <h2 class="font-bold text-white text-base">Escalação do Time</h2>
+                    </div>
+                    <label id="liberoToggleContainer" class="flex items-center gap-2 cursor-pointer bg-slate-900/60 px-2.5 py-1 rounded-lg border border-slate-700">
+                        <input type="checkbox" id="useLiberoCheckbox" onchange="toggleLibero(this.checked)" checked class="rounded bg-slate-800 border-slate-600 text-indigo-600 focus:ring-indigo-500">
+                        <span class="text-xs font-semibold text-slate-300">Usar Líbero</span>
+                    </label>
+                </div>
+
+                <p class="text-xs text-slate-400 mb-3">
+                    Personalize o nome dos seus amigos nas posições de saída (Ordem do Saque P1 a P6):
+                </p>
+
+                <div id="playersFormList" class="space-y-2.5 max-h-[420px] overflow-y-auto pr-1">
+                </div>
+            </div>
+            <div class="bg-slate-800 p-4 rounded-xl border border-slate-700">
+                <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">Legenda de Funções</h3>
+                <div class="grid grid-cols-2 gap-2 text-xs">
+                    <div class="flex items-center gap-2 bg-slate-900/50 p-2 rounded border border-slate-700/50">
+                        <span class="w-3.5 h-3.5 rounded-full bg-red-500 shrink-0"></span>
+                        <span class="text-slate-200 font-medium">Levantador (LEV)</span>
+                    </div>
+                    <div class="flex items-center gap-2 bg-slate-900/50 p-2 rounded border border-slate-700/50">
+                        <span class="w-3.5 h-3.5 rounded-full bg-yellow-500 shrink-0"></span>
+                        <span class="text-slate-200 font-medium">Oposto (OP)</span>
+                    </div>
+                    <div class="flex items-center gap-2 bg-slate-900/50 p-2 rounded border border-slate-700/50">
+                        <span class="w-3.5 h-3.5 rounded-full bg-blue-500 shrink-0"></span>
+                        <span class="text-slate-200 font-medium">Ponteiro (PT)</span>
+                    </div>
+                    <div class="flex items-center gap-2 bg-slate-900/50 p-2 rounded border border-slate-700/50">
+                        <span class="w-3.5 h-3.5 rounded-full bg-emerald-500 shrink-0"></span>
+                        <span class="text-slate-200 font-medium">Central (CT)</span>
+                    </div>
+                    <div class="flex items-center gap-2 bg-slate-900/50 p-2 rounded border border-slate-700/50">
+                        <span class="w-3.5 h-3.5 rounded-full bg-purple-500 shrink-0"></span>
+                        <span class="text-slate-200 font-medium">Líbero (LIB)</span>
+                    </div>
+                    <div class="flex items-center gap-2 bg-slate-900/50 p-2 rounded border border-slate-700/50">
+                        <span class="w-3.5 h-3.5 rounded-full bg-slate-500 shrink-0"></span>
+                        <span class="text-slate-200 font-medium">Coringa / Geral</span>
+                    </div>
+                </div>
+            </div>
+
+        </section>
+    </main>
+    <footer class="bg-slate-950 border-t border-slate-800 py-3 text-center text-xs text-slate-500 mt-auto">
+        Prancheta Tática Animada de Vôlei - Desenvolvido para Campeonatos Municipais
+    </footer>
+    <script>
+        let currentSystem = '5x1';
+        let currentRotationIndex = 0;
+        let isAnimatedToTactical = false;
+        let ballPossession = 'us';
+        let useLibero = true;
+
+        // key -> elemento DOM do boneco (mantém o MESMO elemento entre atualizações,
+        // permitindo que a transição CSS anime o deslocamento)
+        const tokenElements = {};
+
+        let players = [
+            { id: 1, name: 'Lucas', role: 'LEV', color: 'bg-red-500', label: 'Levantador' },
+            { id: 2, name: 'Bruno', role: 'PT1', color: 'bg-blue-500', label: 'Ponteiro 1' },
+            { id: 3, name: 'Gustavo', role: 'CT1', color: 'bg-emerald-500', label: 'Central 1' },
+            { id: 4, name: 'Felipe', role: 'OP', color: 'bg-yellow-500', label: 'Oposto' },
+            { id: 5, name: 'Rodrigo', role: 'PT2', color: 'bg-blue-500', label: 'Ponteiro 2' },
+            { id: 6, name: 'Mateus', role: 'CT2', color: 'bg-emerald-500', label: 'Central 2' },
+            { id: 7, name: 'Thiago', role: 'LIB', color: 'bg-purple-500', label: 'Líbero' }
+        ];
+
+        const COURT_SERVE_POSITIONS = {
+            P4: { x: 20, y: 18, name: "P4 (Frente Esquerda)" },
+            P3: { x: 50, y: 18, name: "P3 (Frente Centro)" },
+            P2: { x: 80, y: 18, name: "P2 (Frente Direita)" },
+            P5: { x: 22, y: 75, name: "P5 (Fundo Esquerda)" },
+            P6: { x: 50, y: 78, name: "P6 (Fundo Centro)" },
+            P1: { x: 80, y: 78, name: "P1 (Fundo Direita / Saque)" }
+        };
+
+        const SYSTEMS_CONFIG = {
+            '6x0': {
+                name: "6x0 (Sem Especialização)",
+                description: "Neste sistema simples, os jogadores mantêm basicamente a formação do rodízio. O jogador que estiver na posição P3 faz o levantamento para os colegas.",
+                defaultRoles: [
+                    { role: 'JOG1', name: 'Jogador 1', color: 'bg-slate-500', label: 'Jogador 1' },
+                    { role: 'JOG2', name: 'Jogador 2', color: 'bg-slate-500', label: 'Jogador 2' },
+                    { role: 'JOG3', name: 'Jogador 3', color: 'bg-slate-500', label: 'Jogador 3' },
+                    { role: 'JOG4', name: 'Jogador 4', color: 'bg-slate-500', label: 'Jogador 4' },
+                    { role: 'JOG5', name: 'Jogador 5', color: 'bg-slate-500', label: 'Jogador 5' },
+                    { role: 'JOG6', name: 'Jogador 6', color: 'bg-slate-500', label: 'Jogador 6' }
+                ]
+            },
+            '4x2': {
+                name: "4x2 Simples",
+                description: "Possui 2 Levantadores em diagonais. O levantador da linha da frente sempre vai para o meio/saída para levantar para os outros dois atacantes da rede.",
+                defaultRoles: [
+                    { role: 'LEV1', name: 'Levantador 1', color: 'bg-red-500', label: 'Levantador A' },
+                    { role: 'PT1', name: 'Ponteiro 1', color: 'bg-blue-500', label: 'Ponteiro 1' },
+                    { role: 'PT2', name: 'Ponteiro 2', color: 'bg-blue-500', label: 'Ponteiro 2' },
+                    { role: 'LEV2', name: 'Levantador 2', color: 'bg-red-500', label: 'Levantador B' },
+                    { role: 'PT3', name: 'Ponteiro 3', color: 'bg-blue-500', label: 'Ponteiro 3' },
+                    { role: 'PT4', name: 'Ponteiro 4', color: 'bg-blue-500', label: 'Ponteiro 4' }
+                ]
+            },
+            '5x1': {
+                name: "5x1 Profissional",
+                description: "O sistema mais completo! Quando o levantador está no fundo, ele INFILTRA na rede logo após o saque para levantar, garantindo que a equipe sempre tenha 3 atacantes armados.",
+                defaultRoles: [
+                    { role: 'LEV', name: 'Levantador', color: 'bg-red-500', label: 'Levantador' },
+                    { role: 'PT1', name: 'Ponteiro 1', color: 'bg-blue-500', label: 'Ponteiro 1' },
+                    { role: 'CT1', name: 'Central 1', color: 'bg-emerald-500', label: 'Central 1' },
+                    { role: 'OP', name: 'Oposto', color: 'bg-yellow-500', label: 'Oposto' },
+                    { role: 'PT2', name: 'Ponteiro 2', color: 'bg-blue-500', label: 'Ponteiro 2' },
+                    { role: 'CT2', name: 'Central 2', color: 'bg-emerald-500', label: 'Central 2' },
+                    { role: 'LIB', name: 'Líbero', color: 'bg-purple-500', label: 'Líbero' }
+                ]
+            }
+        };
+
+
+        window.onload = function() {
+            lucide.createIcons();
+            changeSystem('5x1');
+        };
+
+        function changeSystem(sys) {
+            currentSystem = sys;
+            currentRotationIndex = 0;
+            isAnimatedToTactical = false;
+
+            // Limpa os bonecos antigos para não sobrarem elementos de outro sistema
+            document.getElementById('playersLayer').innerHTML = '';
+            Object.keys(tokenElements).forEach(k => delete tokenElements[k]);
+
+            const sysData = SYSTEMS_CONFIG[sys];
+            players = sysData.defaultRoles.map((def, idx) => {
+                const existingName = players[idx] ? players[idx].name : def.name;
+                return {
+                    id: idx + 1,
+                    name: existingName,
+                    role: def.role,
+                    color: def.color,
+                    label: def.label
+                };
+            });
+
+            if (sys === '5x1') {
+                document.getElementById('liberoToggleContainer').classList.remove('hidden');
+                if (players.length < 7) {
+                    players.push({ id: 7, name: 'Líbero', role: 'LIB', color: 'bg-purple-500', label: 'Líbero' });
+                }
+            } else {
+                document.getElementById('liberoToggleContainer').classList.add('hidden');
+            }
+
+            renderPlayerInputs();
+            updateBoard();
+        }
+        function getRotationMap(rotIndex) {
+            const courtSlots = ['P1', 'P6', 'P5', 'P4', 'P3', 'P2'];
+            const mapped = {};
+            for (let i = 0; i < 6; i++) {
+                const slotIndex = (i + rotIndex) % 6;
+                mapped[courtSlots[slotIndex]] = i;
+            }
+            return mapped;
+        }
+
+        function nextRotation() {
+            currentRotationIndex = (currentRotationIndex + 1) % 6;
+            updateBoard();
+        }
+
+        function prevRotation() {
+            currentRotationIndex = (currentRotationIndex - 1 + 6) % 6;
+            updateBoard();
+        }
+
+        function toggleAnimationState() {
+            isAnimatedToTactical = !isAnimatedToTactical;
+            updateBoard();
+        }
+
+        function setBallPossession(possession) {
+            ballPossession = possession;
+            const btnUs = document.getElementById('btnBallUs');
+            const btnEnemy = document.getElementById('btnBallEnemy');
+
+            if (possession === 'us') {
+                btnUs.className = "p-2.5 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition bg-indigo-600 text-white shadow";
+                btnEnemy.className = "p-2.5 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition bg-slate-900 text-slate-400 hover:text-white border border-slate-700";
+            } else {
+                btnEnemy.className = "p-2.5 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition bg-amber-600 text-white shadow";
+                btnUs.className = "p-2.5 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition bg-slate-900 text-slate-400 hover:text-white border border-slate-700";
+            }
+            updateBoard();
+        }
+
+        function toggleLibero(checked) {
+            useLibero = checked;
+            updateBoard();
+        }
+        function calculatePositions() {
+            const rotSlots = getRotationMap(currentRotationIndex);
+            let activeCourt = [];
+
+            Object.keys(rotSlots).forEach(slot => {
+                const playerIndex = rotSlots[slot];
+                let player = { ...players[playerIndex] };
+                player.courtSlot = slot;
+
+                if (currentSystem === '5x1' && useLibero && (player.role === 'CT1' || player.role === 'CT2')) {
+                    if (['P1', 'P6', 'P5'].includes(slot)) {
+                        const libero = players.find(p => p.role === 'LIB') || { name: 'Líbero', role: 'LIB', color: 'bg-purple-500' };
+                        player = { ...libero, courtSlot: slot, isLiberoSub: true };
+                    }
+                }
+
+                player.key = playerIndex; // identidade estável do boneco
+                activeCourt.push(player);
+            });
+            activeCourt.forEach(p => {
+                p.serveCoords = COURT_SERVE_POSITIONS[p.courtSlot];
+
+                if (!isAnimatedToTactical) {
+                    p.currentCoords = { ...p.serveCoords };
+                    p.actionText = `Rodízio (${p.courtSlot})`;
+                } else {
+                    p.currentCoords = getTacticalTargetCoords(p);
+                }
+            });
+
+            return activeCourt;
+        }
+
+        function getTacticalTargetCoords(player) {
+            const slot = player.courtSlot;
+            const role = player.role;
+            const isFront = ['P4', 'P3', 'P2'].includes(slot);
+
+            if (currentSystem === '6x0') {
+                if (slot === 'P3') return { x: 50, y: 22, actionText: "Levantando na Rede" };
+                if (slot === 'P4') return { x: 22, y: 22, actionText: "Atacando na Ponta" };
+                if (slot === 'P2') return { x: 78, y: 22, actionText: "Atacando na Saída" };
+                return { x: COURT_SERVE_POSITIONS[slot].x, y: COURT_SERVE_POSITIONS[slot].y, actionText: "Posição de Defesa" };
+            }
+
+            if (currentSystem === '4x2') {
+                if (isFront) {
+                    if (role.includes('LEV')) return { x: 60, y: 18, actionText: "Organizando Levantamento" };
+                    if (slot === 'P4') return { x: 22, y: 18, actionText: "Entrada de Rede (P4)" };
+                    return { x: 78, y: 18, actionText: "Saída de Rede (P2)" };
+                } else {
+                    return { x: COURT_SERVE_POSITIONS[slot].x, y: COURT_SERVE_POSITIONS[slot].y, actionText: "Posição de Fundo" };
+                }
+            }
+
+            if (currentSystem === '5x1') {
+                if (ballPossession === 'us') {
+                    if (isFront) {
+                        if (role === 'LEV') return { x: 78, y: 18, actionText: "Levantador na Saída (P2)" };
+                        if (role === 'OP') return { x: 78, y: 18, actionText: "Oposto na Saída (P2)" };
+                        if (role.includes('CT')) return { x: 50, y: 18, actionText: "Central no Meio (P3)" };
+                        if (role.includes('PT')) return { x: 22, y: 18, actionText: "Ponteiro na Ponta (P4)" };
+                    } else {
+                        if (role === 'LEV') {
+                            return { x: 62, y: 14, actionText: "⚡ INFILTRAÇÃO para levantar!", isInfiltrating: true };
+                        }
+                        if (role === 'OP') return { x: 80, y: 72, actionText: "Oposto (Ataque do Fundo / Fundo Dir)" };
+                        if (role.includes('PT')) return { x: 25, y: 72, actionText: "Ponteiro Focado no Passe (P5)" };
+                        if (role === 'LIB' || role.includes('CT')) return { x: 50, y: 82, actionText: "Líbero na Defesa Central (P6)" };
+                    }
+                } else {
+                    if (isFront) {
+                        if (role === 'LEV') return { x: 75, y: 18, actionText: "Levantador no Bloco/Defesa" };
+                        if (role.includes('CT')) return { x: 50, y: 18, actionText: "Central bloqueando o meio" };
+                        return { x: 25, y: 18, actionText: "Ponteiro bloqueando a ponta" };
+                    } else {
+                        return { x: COURT_SERVE_POSITIONS[slot].x, y: COURT_SERVE_POSITIONS[slot].y, actionText: "Posicionando para Defesa" };
+                    }
+                }
+            }
+
+            return { x: COURT_SERVE_POSITIONS[slot].x, y: COURT_SERVE_POSITIONS[slot].y, actionText: slot };
+        }
+        function updateBoard() {
+            const activePlayers = calculatePositions();
+            const playersLayer = document.getElementById('playersLayer');
+            const animationSvg = document.getElementById('animationSvg');
+
+            // NÃO limpamos o playersLayer: os bonecos são reaproveitados para a transição funcionar
+            animationSvg.innerHTML = '';
+
+            const btnText = document.getElementById('animateBtnText');
+            const statusLabel = document.getElementById('statusAnimationLabel');
+
+            if (isAnimatedToTactical) {
+                btnText.textContent = "⏪ Voltar para Rodízio Estático";
+                statusLabel.textContent = ballPossession === 'us' ? "⚡ Em Ação: Recepção & Infiltração" : "🛡️ Em Ação: Bloqueio & Defesa";
+                statusLabel.className = "text-yellow-300 bg-yellow-950/80 px-2.5 py-0.5 rounded-full border border-yellow-500/40 text-[11px] font-semibold";
+            } else {
+                btnText.textContent = "▶ Animar Troca Tática";
+                statusLabel.textContent = "📍 Posição Estática de Saque (Regra do Rodízio)";
+                statusLabel.className = "text-emerald-300 bg-emerald-950/80 px-2.5 py-0.5 rounded-full border border-emerald-500/40 text-[11px] font-semibold";
+            }
+
+            activePlayers.forEach(p => {
+                const start = p.serveCoords;
+                const target = p.currentCoords;
+                if (isAnimatedToTactical && (start.x !== target.x || start.y !== target.y)) {
+                    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                    line.setAttribute('x1', `${start.x}%`);
+                    line.setAttribute('y1', `${start.y}%`);
+                    line.setAttribute('x2', `${target.x}%`);
+                    line.setAttribute('y2', `${target.y}%`);
+                    line.setAttribute('stroke', target.isInfiltrating ? '#facc15' : 'rgba(255, 255, 255, 0.6)');
+                    line.setAttribute('stroke-width', '2.5');
+                    line.setAttribute('class', 'movement-line');
+                    animationSvg.appendChild(line);
+                    const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                    circle.setAttribute('cx', `${target.x}%`);
+                    circle.setAttribute('cy', `${target.y}%`);
+                    circle.setAttribute('r', '4');
+                    circle.setAttribute('fill', '#ffffff');
+                    animationSvg.appendChild(circle);
+                }
+
+                // Reaproveita o elemento existente (ou cria na primeira vez)
+                let token = tokenElements[p.key];
+                if (!token) {
+                    token = document.createElement('div');
+                    token.className = 'player-token absolute flex flex-col items-center justify-center cursor-pointer group';
+                    token.style.left = `${target.x}%`;
+                    token.style.top = `${target.y}%`;
+                    tokenElements[p.key] = token;
+                    playersLayer.appendChild(token);
+                }
+
+                const isHighlight = target.isInfiltrating;
+                const ringEffect = isHighlight ? 'pulse-ring ring-4 ring-yellow-400 font-extrabold scale-110 z-30' : '';
+
+                // Atualiza só o conteúdo; o elemento continua o mesmo
+                token.innerHTML = `
+                    <div class="w-11 h-11 sm:w-12 sm:h-12 rounded-full ${p.color} text-white font-bold text-xs flex flex-col items-center justify-center shadow-2xl border-2 border-white transition-transform transform group-hover:scale-110 ${ringEffect}">
+                        <span class="text-[11px] leading-tight font-black">${p.role}</span>
+                        <span class="text-[8px] opacity-90 truncate max-w-[38px]">${p.name}</span>
+                    </div>
+
+                    <div class="bg-slate-900/95 text-slate-100 text-[10px] font-semibold px-2 py-0.5 rounded shadow-lg border border-slate-700 mt-1 whitespace-nowrap text-center pointer-events-none">
+                        ${p.name}
+                        <span class="block text-[8px] text-indigo-300 font-normal">${target.actionText}</span>
+                    </div>
+                `;
+
+                // Mudar left/top no MESMO elemento dispara a transição CSS
+                token.style.left = `${target.x}%`;
+                token.style.top = `${target.y}%`;
+            });
+            const lev = activePlayers.find(p => p.role === 'LEV' || p.role === 'LEV1') || activePlayers[0];
+            document.getElementById('rotationDisplay').textContent = `Rotação ${currentRotationIndex + 1} - ${lev.role} em ${lev.courtSlot}`;
+
+            updateTacticalGuidance(activePlayers);
+        }
+        function updateTacticalGuidance(activePlayers) {
+            const titleEl = document.getElementById('tacticalTitle');
+            const descEl = document.getElementById('tacticalDescription');
+
+            const lev = activePlayers.find(p => p.role === 'LEV' || p.role === 'LEV1');
+            const isLevInFront = lev && ['P4', 'P3', 'P2'].includes(lev.courtSlot);
+
+            if (currentSystem === '6x0') {
+                titleEl.textContent = `Sistema 6x0: Rotação ${currentRotationIndex + 1}`;
+                descEl.textContent = isAnimatedToTactical ?
+                    "Jogadores posicionados para a troca simples. Quem está na posição P3 assume o levantamento para a equipe." :
+                    "Posição estática de rodízio oficial. Clique em 'Animar Troca Tática' para ver o posicionamento de jogo.";
+            } else if (currentSystem === '4x2') {
+                titleEl.textContent = `Sistema 4x2: Rotação ${currentRotationIndex + 1}`;
+                descEl.textContent = isAnimatedToTactical ?
+                    "O levantador da frente desloca-se para a zona de levantamento, garantindo duas opções de ataque na rede." :
+                    "Ordem oficial de saque. Nenhum jogador da linha de trás pode ultrapassar o da frente antes do toque na bola.";
+            } else if (currentSystem === '5x1') {
+                if (isLevInFront) {
+                    titleEl.textContent = `5x1: Levantador na Rede (Rotação ${currentRotationIndex + 1})`;
+                    descEl.textContent = isAnimatedToTactical ?
+                        `O Levantador (${lev.name}) já está na rede (em P2). A equipe conta com 3 atacantes armados: o Ponteiro (P4), o Central (P3) e o Oposto (P2).` :
+                        `O levantador está na rede na posição ${lev.courtSlot}. A equipe mantém a formação base de rodízio.`;
+                } else {
+                    titleEl.textContent = `5x1: Infiltração do Levantador (Rotação ${currentRotationIndex + 1})`;
+                    descEl.textContent = isAnimatedToTactical ?
+                        `⚡ O Levantador (${lev.name}) está no fundo (${lev.courtSlot}) mas INFILTRA rapidamente para a frente logo após o saque! Isso permite manter 3 atacantes potentes na rede.` :
+                        `O Levantador (${lev.name}) está no fundo. Atenção para não cometer falta de rotação antes do saque sair da mão do adversário/colega.`;
+                }
+            }
+        }
+        function renderPlayerInputs() {
+            const listEl = document.getElementById('playersFormList');
+            listEl.innerHTML = '';
+
+            players.forEach((p, idx) => {
+                if (p.role === 'LIB' && currentSystem !== '5x1') return;
+
+                const row = document.createElement('div');
+                row.className = "flex items-center gap-2 bg-slate-900/60 p-2 rounded-lg border border-slate-700/60";
+
+                row.innerHTML = `
+                    <div class="w-7 h-7 rounded-full ${p.color} text-white font-bold text-xs flex items-center justify-center shrink-0 shadow">
+                        ${p.role}
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <label class="block text-[10px] uppercase font-bold text-slate-400">${p.label || `Posição ${idx + 1}`}</label>
+                        <input type="text" value="${p.name}" onchange="updatePlayerName(${idx}, this.value)"
+                            class="bg-slate-800 text-white font-medium text-xs rounded px-2 py-1 w-full border border-slate-700 focus:outline-none focus:border-indigo-500">
+                    </div>
+                `;
+
+                listEl.appendChild(row);
+            });
+        }
+
+        function updatePlayerName(index, newName) {
+            if (newName.trim() !== '') {
+                players[index].name = newName.trim();
+                updateBoard();
+            }
+        }
+    </script>
+</body>
+</html>
